@@ -1,0 +1,10 @@
+[package]
+name = "btree"
+version = "0.1.0"
+authors = ["nshneor <nshneor@redhat.com>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.4.3"
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
+memmap = "0.7.0"

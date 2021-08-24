@@ -1,9 +1,6 @@
-use std::time::Duration;
-
-use bincode;
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Pee {
     a: u32,
     b: u64,
@@ -21,15 +18,5 @@ fn main() {
         dbg!(raf.read::<Pee>(0u64));
     }
 
-    let mut vt = quotick::veb_tree::VEBTree::new(1_000_000).unwrap();
-
-    vt.insert(123);
-    vt.insert(657);
-    vt.insert(120);
-    vt.insert(126);
-    vt.insert(106);
-    vt.insert(142);
-    vt.insert(127);
-
-    dbg!(vt.find_next(124));
+    quotick::frameset::FrameSet::new(123);
 }

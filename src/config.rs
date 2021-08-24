@@ -1,22 +1,20 @@
-use super::Tick;
-
 #[inline(always)]
-pub fn build_frame_backing_file_name<T: Tick>(
-    tick: &T,
+pub fn build_frame_backing_file_name(
+    epoch: u64,
 ) -> String {
-    format!("{}.qtf", tick.epoch())
+    format!("{}.qtf", epoch)
 }
 
 #[inline(always)]
-pub fn build_index_backing_file_name<T: Tick>(
-    tick: &T,
+pub fn build_index_backing_file_name(
+    epoch: u64,
 ) -> String {
-    format!("{}.qti", tick.epoch())
+    format!("{}.qti", epoch)
 }
 
 #[inline(always)]
-pub fn build_super_index_backing_file_name<T: Tick>(
-    tick: &T,
+pub fn build_super_index_backing_file_name(
+    epoch: u64,
 ) -> String {
-    format!("{}.qti", tick.epoch())
+    format!("{}.qti", epoch)
 }
