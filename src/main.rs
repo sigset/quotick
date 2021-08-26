@@ -1,4 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
+use btree::node_type::KeyValuePair;
+
+use radix_trie::{Trie, TrieCommon, iter::*};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Pee {
@@ -13,10 +16,18 @@ fn main() {
 //        quotick::TableType::Quote,
 //    ).unwrap();
 
-    if let Ok(mut raf) = quotick::random_access_file::RandomAccessFile::new("./foo") {
-        dbg!(raf.append(Pee { a: 1u32, b: 2u64 }));
-        dbg!(raf.read::<Pee>(0u64));
-    }
+    let mut xy =
+        quotick
+            ::frameset
+            ::FrameSet
+            ::new(123)
+                .unwrap();
 
-    quotick::frameset::FrameSet::new(123);
+    let mut x: Trie<u64, u64> = Trie::new();
+
+    x.insert(123, 456);
+    x.insert(122, 456);
+    x.insert(124, 456);
+
+    dbg!(bincode::serialize(&x));
 }

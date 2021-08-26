@@ -14,6 +14,10 @@ impl<T: Tick> Frame<T> {
         }
     }
 
+    pub fn time(&self) -> u64 {
+        self.tick.time()
+    }
+
     pub fn epoch(&self) -> u64 {
         self.tick.epoch()
     }

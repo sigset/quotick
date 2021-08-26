@@ -7,9 +7,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 pub struct RandomAccessFile {
-    pub(crate) file: File,
-    pub(crate) reader: BufReader<File>,
-    pub(crate) writer: BufWriter<File>,
+    file: File,
 }
 
 impl RandomAccessFile {
@@ -23,36 +21,20 @@ impl RandomAccessFile {
                 .create(true)
                 .open(path.as_ref())?;
 
-        let reader =
-            BufReader::<File>::new(
-                file.try_clone()?,
-            );
-
-        let writer =
-            BufWriter::<File>::new(
-                file.try_clone()?,
-            );
-
         Ok(
             RandomAccessFile {
                 file,
-                reader,
-                writer,
             },
         )
     }
 
-    pub fn truncate(
-        &self,
-    ) {
-        self.file.set_len(0);
-    }
+    // singular ops
 
     pub fn read<T: Serialize + DeserializeOwned + Default>(
         &mut self,
         offset: u64,
     ) -> Result<T, Box<dyn std::error::Error>> {
-        self.reader
+        self.file
             .seek(
                 SeekFrom::Start(
                     offset,
@@ -69,11 +51,11 @@ impl RandomAccessFile {
                 data_size,
             );
 
-        unsafe { buf.set_len(data_size); }
+        buf.resize(data_size, 0);
 
         buf.fill(0);
 
-        self.reader
+        self.file
             .read(&mut buf)?;
 
         Ok(
@@ -86,20 +68,20 @@ impl RandomAccessFile {
     pub fn write<T: Serialize>(
         &mut self,
         position: SeekFrom,
-        item: T,
+        item: &T,
     ) -> Result<u64, Box<dyn std::error::Error>> {
         let end_pos =
-            self.writer
+            self.file
                 .seek(
                     position,
                 )?;
 
         let buf =
             bincode::serialize(
-                &item,
+                item,
             )?;
 
-        self.writer
+        self.file
             .write(&buf)?;
 
         Ok(end_pos)
@@ -107,7 +89,7 @@ impl RandomAccessFile {
 
     pub fn append<T: Serialize>(
         &mut self,
-        item: T,
+        item: &T,
     ) -> Result<u64, Box<dyn std::error::Error>> {
         self.write(
             SeekFrom::End(
@@ -115,5 +97,35 @@ impl RandomAccessFile {
             ),
             item,
         )
+    }
+
+    // file-global ops
+
+    pub fn read_all<T: Serialize + DeserializeOwned>(
+        &mut self,
+    ) -> Result<T, Box<dyn std::error::Error>> {
+        self.file
+            .seek(
+                SeekFrom::Start(
+                    0,
+                ),
+            )?;
+
+        let mut buf = Vec::new();
+
+        self.file
+            .read_to_end(&mut buf)?;
+
+        Ok(
+            bincode::deserialize::<T>(
+                &buf,
+            )?
+        )
+    }
+
+    pub fn truncate(
+        &self,
+    ) {
+        self.file.set_len(0);
     }
 }

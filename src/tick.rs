@@ -16,16 +16,19 @@ pub struct Trade {
 }
 
 pub trait Tick {
+    fn time(&self) -> u64;
     fn epoch(&self) -> u64;
 }
 
 impl Tick for Quote {
+    fn time(&self) -> u64 { self.time }
     fn epoch(&self) -> u64 {
         self.time / 86_400_000_000
     }
 }
 
 impl Tick for Trade {
+    fn time(&self) -> u64 { self.time }
     fn epoch(&self) -> u64 {
         self.time / 86_400_000_000
     }
