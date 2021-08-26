@@ -4,21 +4,37 @@ use super::Tick;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Frame<T: Tick> {
-    tick: T,
+    tick: Option<T>,
 }
 
 impl<T: Tick> Frame<T> {
-    pub fn new(tick: T) -> Frame<T> {
+    pub fn new(tick: Option<T>) -> Frame<T> {
         Frame {
             tick,
         }
     }
 
-    pub fn time(&self) -> u64 {
-        self.tick.time()
+    pub fn time(&self) -> Option<u64> {
+        self.tick
+            .as_ref()
+            .map(|tick| tick.time())
     }
 
-    pub fn epoch(&self) -> u64 {
-        self.tick.epoch()
+    pub fn epoch(&self) -> Option<u64> {
+        self.tick
+            .as_ref()
+            .map(|tick| tick.epoch())
+    }
+}
+
+impl<T: Tick> From<T> for Frame<T> {
+    fn from(item: T) -> Frame<T> {
+        Frame::new(Some(item))
+    }
+}
+
+impl<T: Tick> From<Option<T>> for Frame<T> {
+    fn from(item: Option<T>) -> Self {
+        Self::new(item)
     }
 }

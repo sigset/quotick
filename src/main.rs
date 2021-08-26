@@ -1,7 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
-use btree::node_type::KeyValuePair;
 
 use radix_trie::{Trie, TrieCommon, iter::*};
+use quotick::tick::Trade;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Pee {
@@ -19,7 +19,7 @@ fn main() {
     let mut xy =
         quotick
             ::frameset
-            ::FrameSet
+            ::FrameSet::<Trade>
             ::new(123)
                 .unwrap();
 
