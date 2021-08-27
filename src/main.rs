@@ -1,6 +1,6 @@
+use radix_trie::Trie;
 use serde_derive::{Deserialize, Serialize};
 
-use radix_trie::{Trie, TrieCommon, iter::*};
 use quotick::tick::Trade;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -16,12 +16,12 @@ fn main() {
 //        quotick::TableType::Quote,
 //    ).unwrap();
 
-    let mut xy =
+    let _xy =
         quotick
-            ::frameset
-            ::FrameSet::<Trade>
-            ::new(123)
-                .unwrap();
+        ::frameset
+        ::FrameSet::<Trade>
+        ::new(123)
+            .unwrap();
 
     let mut x: Trie<u64, u64> = Trie::new();
 

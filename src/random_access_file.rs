@@ -1,10 +1,10 @@
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 pub struct RandomAccessFile {
     file: File,
