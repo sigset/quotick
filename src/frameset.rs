@@ -9,7 +9,7 @@ use super::backing::random_access_file::RandomAccessFile;
 use super::config::build_frame_backing_file_name;
 use super::frame::Frame;
 use super::Tick;
-use crate::backing::trie_file::TrieFile;
+use crate::backing::backing_file::BackingFile;
 
 #[derive(Debug)]
 pub enum FrameSetError {
@@ -24,7 +24,7 @@ pub type FrameIndex = Trie<u64, u64>;
 
 pub struct FrameSet<T: Tick + Serialize + DeserializeOwned + Default> {
     frame_data_backing: RandomAccessFile<Frame<T>>,
-    frame_index_backing: TrieFile<u64, u64>,
+    frame_index_backing: BackingFile<Trie<u64, u64>>,
     frame_index: FrameIndex,
     _phantom: PhantomData<T>,
 }
@@ -39,16 +39,18 @@ impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
                     epoch,
                 ),
             )
-                .or_else(|_|
+                .or_else(|err| {
+                    dbg!(err);
+
                     Err(
                         FrameSetError::BackingFileFailure(
                             "Failed to open frame backing file.",
                         ),
                     )
-                )?;
+                })?;
 
         let mut frame_index_backing =
-            TrieFile::<u64, u64>::new(
+            BackingFile::<Trie<u64, u64>>::new(
                 build_frame_backing_file_name(
                     epoch,
                 ),

@@ -2,7 +2,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use super::frameset::FrameSet;
-use super::quotick::QuotickError;
+use super::epoch_bridge::EpochBridgeError;
 use super::Tick;
 
 pub struct Epoch<T: Tick + Serialize + DeserializeOwned> {
@@ -13,11 +13,11 @@ pub struct Epoch<T: Tick + Serialize + DeserializeOwned> {
 impl<'a, T: Tick + Serialize + DeserializeOwned> Epoch<T> {
     pub fn new(
         epoch: u64,
-    ) -> Result<Epoch<T>, QuotickError> {
+    ) -> Result<Epoch<T>, EpochBridgeError> {
         let frame_set =
             FrameSet::new(epoch)
                 .map_err(|err|
-                    QuotickError::FrameSet(err)
+                    EpochBridgeError::FrameSet(err)
                 )?;
 
         Ok(

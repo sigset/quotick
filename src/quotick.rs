@@ -1,81 +1,58 @@
-use std::io::SeekFrom;
+use std::path::{Path, PathBuf};
 
-use radix_trie::Trie;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use super::backing::random_access_file::RandomAccessFile;
-use super::config::build_epoch_index_backing_file_name;
-use super::epoch::Epoch;
-use super::frameset::FrameSetError;
 use super::Tick;
-use super::backing::trie_file::TrieFile;
+use crate::epoch_bridge::{EpochBridge, EpochBridgeError};
+use crate::path_builder::QuotickPathBuilder;
 
 #[derive(Debug)]
 pub enum QuotickError {
-    FrameSet(FrameSetError),
-    BackingFileFailure,
+    EpochBridge(EpochBridgeError),
     Inconsistency,
 }
 
-pub type EpochIndex = Trie<u64, u64>;
-
 pub struct Quotick<T: Tick + Serialize + DeserializeOwned> {
-    epoch_index_backing: TrieFile<u64, u64>,
-    epoch_index: EpochIndex,
-
-    curr_epoch: (u64, Option<Epoch<T>>),
+    asset: String,
+    path_builder: QuotickPathBuilder,
+    epoch_bridge: EpochBridge<T>,
 }
 
 impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
-    pub fn new() -> Result<Quotick<T>, QuotickError> {
-        let mut epoch_index_backing =
-            TrieFile::<u64, u64>::new(
-                build_epoch_index_backing_file_name(),
-            )
-                .map_err(|_| QuotickError::BackingFileFailure)?;
-
-        let epoch_index =
-            epoch_index_backing.try_read()
-                .unwrap_or_else(|_| Trie::new());
-
-        Ok(
-            Quotick {
-                epoch_index_backing,
-                epoch_index,
-
-                curr_epoch: (0u64, None),
-            },
-        )
-    }
-
-    pub(crate) fn load_epoch(
-        &mut self,
-        epoch: u64,
-    ) -> Result<(), QuotickError> {
-        if self.curr_epoch.0 == epoch {
-            return Ok(());
-        }
-
-        self.curr_epoch = (epoch, Some(Epoch::new(epoch)?));
-
-        Ok(())
-    }
-
-    pub fn persist(&mut self) {
-        self.epoch_index_backing
-            .write_all(
-                &self.epoch_index,
+    pub fn new(
+        asset: String,
+        base_path: impl AsRef<Path>,
+    ) -> Result<Quotick<T>, QuotickError> {
+        let path_builder =
+            QuotickPathBuilder::new(
+                &asset,
+                base_path,
             );
 
-        if let Some(ref mut epoch) = self.curr_epoch.1 {
-            epoch.persist();
-        }
-    }
-}
+        let epoch_bridge =
+            EpochBridge::<T>::new()
+                .or_else(|err|
+                    Err(QuotickError::EpochBridge(err)),
+                )?;
 
-impl<T: Tick + Serialize + DeserializeOwned> Drop for Quotick<T> {
-    fn drop(&mut self) {
-        self.persist();
+        let quotick =
+            Quotick {
+                asset,
+                path_builder,
+                epoch_bridge,
+            };
+
+        quotick.init_paths();
+
+        Ok(quotick)
+    }
+
+    pub fn init_paths(&self) {
+        std::fs::create_dir_all(
+            self
+                .path_builder
+                .frameset_path(),
+        );
     }
 }
