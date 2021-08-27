@@ -38,3 +38,13 @@ impl<T: Tick> From<Option<T>> for Frame<T> {
         Self::new(item)
     }
 }
+
+impl<T: Tick> Default for Frame<T> {
+    fn default() -> Self {
+        Frame::new(
+            Some(
+                T::default(),
+            ),
+        )
+    }
+}

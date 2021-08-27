@@ -5,10 +5,11 @@ use radix_trie::Trie;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+use super::backing::random_access_file::RandomAccessFile;
 use super::config::build_frame_backing_file_name;
 use super::frame::Frame;
-use super::random_access_file::RandomAccessFile;
 use super::Tick;
+use crate::backing::trie_file::TrieFile;
 
 #[derive(Debug)]
 pub enum FrameSetError {
@@ -19,19 +20,21 @@ pub enum FrameSetError {
     FrameEmpty,
 }
 
-pub struct FrameSet<T: Tick + Serialize + DeserializeOwned> {
-    frame_data_backing: RandomAccessFile,
-    frame_index_backing: RandomAccessFile,
-    frame_index: Trie<u64, u64>,
+pub type FrameIndex = Trie<u64, u64>;
+
+pub struct FrameSet<T: Tick + Serialize + DeserializeOwned + Default> {
+    frame_data_backing: RandomAccessFile<Frame<T>>,
+    frame_index_backing: TrieFile<u64, u64>,
+    frame_index: FrameIndex,
     _phantom: PhantomData<T>,
 }
 
-impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
+impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
     pub fn new(
         epoch: u64,
     ) -> Result<FrameSet<T>, FrameSetError> {
         let frame_data_backing =
-            RandomAccessFile::new(
+            RandomAccessFile::<Frame<T>>::new(
                 build_frame_backing_file_name(
                     epoch,
                 ),
@@ -45,7 +48,7 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
                 )?;
 
         let mut frame_index_backing =
-            RandomAccessFile::new(
+            TrieFile::<u64, u64>::new(
                 build_frame_backing_file_name(
                     epoch,
                 ),
@@ -59,7 +62,7 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
                 )?;
 
         let frame_index =
-            frame_index_backing.read_all::<Trie<u64, u64>>()
+            frame_index_backing.try_read()
                 .unwrap_or_else(|_| Trie::new());
 
         Ok(
@@ -72,9 +75,9 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
         )
     }
 
-    pub fn insert<F: Tick + Serialize>(
+    pub fn insert(
         &mut self,
-        frame: Frame<F>,
+        frame: Frame<T>,
     ) -> Result<(), FrameSetError> {
         let time =
             frame
@@ -88,7 +91,7 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
         }
 
         let offset =
-            self.frame_index_backing
+            self.frame_data_backing
                 .append(&frame)
                 .map_err(|_| FrameSetError::WriteFailure)?;
 
@@ -103,8 +106,7 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
 
     pub fn persist(&mut self) {
         self.frame_index_backing
-            .write(
-                SeekFrom::Start(0),
+            .write_all(
                 &self.frame_index,
             );
     }

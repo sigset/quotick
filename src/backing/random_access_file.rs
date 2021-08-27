@@ -1,19 +1,23 @@
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::marker::PhantomData;
 use std::path::Path;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub struct RandomAccessFile {
+use super::super::Tick;
+
+pub struct RandomAccessFile<T: Serialize + DeserializeOwned + Default> {
     file: File,
+    _phantom: PhantomData<T>,
 }
 
-impl RandomAccessFile {
+impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
     pub fn new(
         path: impl AsRef<Path>,
-    ) -> Result<RandomAccessFile, io::Error> {
+    ) -> Result<RandomAccessFile<T>, io::Error> {
         let file =
             OpenOptions::new()
                 .read(true)
@@ -24,13 +28,15 @@ impl RandomAccessFile {
         Ok(
             RandomAccessFile {
                 file,
+
+                _phantom: PhantomData,
             },
         )
     }
 
     // singular ops
 
-    pub fn read<T: Serialize + DeserializeOwned + Default>(
+    pub fn read(
         &mut self,
         offset: u64,
     ) -> Result<T, Box<dyn std::error::Error>> {
@@ -65,7 +71,7 @@ impl RandomAccessFile {
         )
     }
 
-    pub fn write<T: Serialize>(
+    pub fn write(
         &mut self,
         position: SeekFrom,
         item: &T,
@@ -87,7 +93,7 @@ impl RandomAccessFile {
         Ok(end_pos)
     }
 
-    pub fn append<T: Serialize>(
+    pub fn append(
         &mut self,
         item: &T,
     ) -> Result<u64, Box<dyn std::error::Error>> {
@@ -96,30 +102,6 @@ impl RandomAccessFile {
                 0,
             ),
             item,
-        )
-    }
-
-    // file-global ops
-
-    pub fn read_all<T: Serialize + DeserializeOwned>(
-        &mut self,
-    ) -> Result<T, Box<dyn std::error::Error>> {
-        self.file
-            .seek(
-                SeekFrom::Start(
-                    0,
-                ),
-            )?;
-
-        let mut buf = Vec::new();
-
-        self.file
-            .read_to_end(&mut buf)?;
-
-        Ok(
-            bincode::deserialize::<T>(
-                &buf,
-            )?
         )
     }
 
