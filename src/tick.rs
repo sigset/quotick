@@ -15,7 +15,7 @@ pub struct Trade {
     pub price: f32,
 }
 
-pub trait Tick: Clone + Default {
+pub trait Tick: Clone + Default + std::fmt::Debug {
     fn time(&self) -> u64;
     fn epoch(&self) -> u64;
 }

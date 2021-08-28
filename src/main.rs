@@ -1,6 +1,7 @@
 use radix_trie::Trie;
 use serde_derive::{Deserialize, Serialize};
 
+use quotick::quotick::Quotick;
 use quotick::tick::Trade;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -16,18 +17,33 @@ fn main() {
 //        quotick::TableType::Quote,
 //    ).unwrap();
 
-    let _xy =
-        quotick
-        ::frameset
-        ::FrameSet::<Trade>
-        ::new(123)
-            .unwrap();
+    let trade1 =
+        Trade {
+            time: 0,
+            size: 1,
+            price: 2.0,
+        };
 
-    let mut x: Trie<u64, u64> = Trie::new();
+    let trade2 =
+        Trade {
+            time: 1,
+            size: 2,
+            price: 3.0,
+        };
 
-    x.insert(123, 456);
-    x.insert(122, 456);
-    x.insert(124, 456);
+    let trade3 =
+        Trade {
+            time: 2,
+            size: 3,
+            price: 4.0,
+        };
 
-    dbg!(bincode::serialize(&x));
+    if let Ok(mut qt) = Quotick::<Trade>::new(
+        "AAPL",
+        "./db",
+    ) {
+        qt.insert(&trade1.into());
+        qt.insert(&trade2.into());
+        qt.insert(&trade3.into());
+    }
 }

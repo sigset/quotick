@@ -5,11 +5,11 @@ use radix_trie::Trie;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+use super::backing::backing_file::BackingFile;
 use super::backing::random_access_file::RandomAccessFile;
-use super::config::build_frame_backing_file_name;
 use super::frame::Frame;
+use super::path_builder::QuotickPathBuilder;
 use super::Tick;
-use crate::backing::backing_file::BackingFile;
 
 #[derive(Debug)]
 pub enum FrameSetError {
@@ -32,12 +32,11 @@ pub struct FrameSet<T: Tick + Serialize + DeserializeOwned + Default> {
 impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
     pub fn new(
         epoch: u64,
+        path_builder: &QuotickPathBuilder,
     ) -> Result<FrameSet<T>, FrameSetError> {
         let frame_data_backing =
             RandomAccessFile::<Frame<T>>::new(
-                build_frame_backing_file_name(
-                    epoch,
-                ),
+                path_builder.frame_backing_file(epoch),
             )
                 .or_else(|err| {
                     dbg!(err);
@@ -51,9 +50,7 @@ impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
 
         let mut frame_index_backing =
             BackingFile::<Trie<u64, u64>>::new(
-                build_frame_backing_file_name(
-                    epoch,
-                ),
+                path_builder.index_backing_file(epoch),
             )
                 .or_else(|_|
                     Err(
@@ -79,7 +76,7 @@ impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
 
     pub fn insert(
         &mut self,
-        frame: Frame<T>,
+        frame: &Frame<T>,
     ) -> Result<(), FrameSetError> {
         let time =
             frame
@@ -94,7 +91,7 @@ impl<T: Tick + Serialize + DeserializeOwned + Default> FrameSet<T> {
 
         let offset =
             self.frame_data_backing
-                .append(&frame)
+                .append(frame)
                 .map_err(|_| FrameSetError::WriteFailure)?;
 
         self.frame_index
