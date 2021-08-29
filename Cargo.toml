@@ -3,6 +3,9 @@ name = "quotick"
 version = "0.1.0"
 authors = ["19h <kenan@sig.dev>", "SIGDEV LLC <hello@sig.dev>"]
 edition = "2018"
+readme = "readme.md"
+description = "Embedded tick market data (trade, quote, ..) database storage optimized for billions of data points."
+license-file = "license.txt"
 
 [dependencies]
 bincode = "1.3.3"
