@@ -7,7 +7,7 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use super::super::Tick;
+
 
 pub struct RandomAccessFile<T: Serialize + DeserializeOwned + Default> {
     file: File,
@@ -18,7 +18,7 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
     pub fn new(
         path: impl AsRef<Path>,
     ) -> Result<RandomAccessFile<T>, io::Error> {
-        let mut file =
+        let file =
             OpenOptions::new()
                 .read(true)
                 .write(true)
