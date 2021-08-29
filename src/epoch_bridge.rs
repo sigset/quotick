@@ -66,7 +66,7 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
             frame.epoch()
                 .ok_or(EpochBridgeError::BadFrameEpoch)?;
 
-        if self.needs_epoch_update(epoch) {
+        if self.needs_epoch_update(frame_epoch) {
             self.load_epoch(
                 frame_epoch,
             )?;
@@ -86,7 +86,7 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
         &self,
         epoch: u64,
     ) -> bool {
-        let epoch_mismatch = frame_epoch != self.curr_epoch.0;
+        let epoch_mismatch = epoch != self.curr_epoch.0;
         let need_epoch = self.curr_epoch.1.is_none();
 
         epoch_mismatch || need_epoch
