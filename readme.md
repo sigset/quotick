@@ -39,7 +39,7 @@ impl quotick::tick::Tick for Trade {
 
     fn epoch(&self) -> u64 {
         // one day
-        self.time / 86_400_000_000
+        self.time / 86_400_000_000_000
     }
 }
 
