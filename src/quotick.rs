@@ -14,6 +14,15 @@ pub enum QuotickError {
     Inconsistency,
 }
 
+pub fn init_paths(
+    path_builder: &QuotickPathBuilder,
+) {
+    std::fs::create_dir_all(
+            path_builder
+            .frameset_path(),
+    );
+}
+
 pub struct Quotick<T: Tick + Serialize + DeserializeOwned> {
     asset: String,
     epoch_bridge: EpochBridge<T>,
@@ -32,31 +41,24 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
                 base_path,
             );
 
+        init_paths(
+            &path_builder,
+        );
+
         let epoch_bridge =
             EpochBridge::<T>::new(&path_builder)
                 .or_else(|err|
                              Err(QuotickError::EpochBridge(err)),
                 )?;
 
-        let quotick =
+        Ok(
             Quotick {
                 asset: asset.to_string(),
                 epoch_bridge,
 
                 path_builder: path_builder.clone(),
-            };
-
-        quotick.init_paths();
-
-        Ok(quotick)
-    }
-
-    pub fn init_paths(&self) {
-        std::fs::create_dir_all(
-            self
-                .path_builder
-                .frameset_path(),
-        );
+            },
+        )
     }
 
     pub fn insert(
@@ -72,5 +74,11 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
     ) {
         self.epoch_bridge
             .persist();
+    }
+}
+
+impl<T: Tick + Serialize + DeserializeOwned> Drop for Quotick<T> {
+    fn drop(&mut self) {
+        self.persist();
     }
 }

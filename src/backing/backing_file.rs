@@ -18,7 +18,7 @@ impl<T> BackingFile<T>
     pub fn new<P: AsRef<Path>>(
         path: P,
     ) -> Result<BackingFile<T>, io::Error> {
-        let file =
+        let mut file =
             OpenOptions::new()
                 .read(true)
                 .write(true)

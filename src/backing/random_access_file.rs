@@ -18,7 +18,7 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
     pub fn new(
         path: impl AsRef<Path>,
     ) -> Result<RandomAccessFile<T>, io::Error> {
-        let file =
+        let mut file =
             OpenOptions::new()
                 .read(true)
                 .write(true)

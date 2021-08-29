@@ -18,7 +18,7 @@ impl QuotickPathBuilder {
 
         QuotickPathBuilder {
             base_path: base_path.to_path_buf(),
-            asset_path: frameset_path.to_path_buf(),
+            asset_path: asset_path.to_path_buf(),
             frameset_path: frameset_path.to_path_buf(),
         }
     }

@@ -1,47 +1,54 @@
-use radix_trie::Trie;
 use serde_derive::{Deserialize, Serialize};
 
 use quotick::quotick::Quotick;
-use quotick::tick::Trade;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct Pee {
-    a: u32,
-    b: u64,
+struct Trade {
+    time: u64,
+    size: u32,
+    price: u32,
+}
+
+impl quotick::tick::Tick for Trade {
+    fn time(&self) -> u64 {
+        self.time
+    }
+
+    fn epoch(&self) -> u64 {
+        // one day
+        self.time / 86_400_000_000
+    }
 }
 
 fn main() {
-//    let mut tick = quotick::Quotick::new(
-//        "./raep",
-//        "AAPL",
-//        quotick::TableType::Quote,
-//    ).unwrap();
-
     let trade1 =
         Trade {
-            time: 0,
+            time: 10,
             size: 1,
-            price: 2.0,
+            price: 2,
         };
 
     let trade2 =
         Trade {
-            time: 1,
+            time: 11,
             size: 2,
-            price: 3.0,
+            price: 3,
         };
 
     let trade3 =
         Trade {
-            time: 2,
+            time: 12,
             size: 3,
-            price: 4.0,
+            price: 4,
         };
 
-    if let Ok(mut qt) = Quotick::<Trade>::new(
-        "AAPL",
-        "./db",
-    ) {
+    let quotick =
+        Quotick::<Trade>::new(
+            "SYMBL",
+            "./db",
+        );
+
+    if let Ok(mut qt) = quotick {
         qt.insert(&trade1.into());
         qt.insert(&trade2.into());
         qt.insert(&trade3.into());

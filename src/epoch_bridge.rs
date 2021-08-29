@@ -40,7 +40,7 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
             BackingFile::<Trie<u64, u64>>::new(
                 path_builder.epoch_index_backing_file(),
             )
-                .map_err(|_| EpochBridgeError::BackingFileFailure)?;
+                .map_err(|err| EpochBridgeError::BackingFileFailure)?;
 
         let epoch_index =
             epoch_index_backing.try_read()
@@ -66,11 +66,12 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
             frame.epoch()
                 .ok_or(EpochBridgeError::BadFrameEpoch)?;
 
-        if self.curr_epoch.1.is_none() || frame_epoch != self.curr_epoch.0 {
-            self.load_epoch(
-                frame_epoch,
-            )?;
-        }
+        let epoch_mismatch = frame_epoch != self.curr_epoch.0;
+        let need_epoch = self.curr_epoch.1.is_none();
+
+        self.load_epoch(
+            frame_epoch,
+        )?;
 
         let ref mut frame_set =
             self.curr_epoch.1.as_mut()
@@ -81,15 +82,28 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
         Ok(())
     }
 
+    #[inline(always)]
     pub fn load_epoch(
         &mut self,
         epoch: u64,
     ) -> Result<(), EpochBridgeError> {
-        if dbg!(self.curr_epoch.0) == dbg!(epoch) {
+        let epoch_mismatch = self.curr_epoch.0 == epoch;
+        let has_epoch = self.curr_epoch.1.is_some();
+
+        if epoch_mismatch && has_epoch {
             return Ok(());
         }
 
-        self.curr_epoch = (epoch, Some(Epoch::new(epoch, &self.path_builder)?));
+        self.curr_epoch =
+            (
+                epoch,
+                Some(
+                    Epoch::new(
+                        epoch,
+                        &self.path_builder,
+                    )?
+                ),
+            );
 
         Ok(())
     }
