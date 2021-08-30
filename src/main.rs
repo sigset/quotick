@@ -1,56 +1,103 @@
+use std::fs::OpenOptions;
+use std::io::Read;
+
 use serde_derive::{Deserialize, Serialize};
 
 use quotick::quotick::Quotick;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Trade {
-    time: u64,
     size: u32,
     price: u32,
 }
 
 impl quotick::tick::Tick for Trade {
-    fn time(&self) -> u64 {
-        self.time
-    }
-
-    fn epoch(&self) -> u64 {
+    fn epoch(&self, time: u64) -> u64 {
         // one day
-        self.time / 86_400_000_000
+        time / 86_400_000_000_000
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TestDataTrade {
+    #[serde(rename = "T")]
+    T: Option<String>,
+    // AAPL
+    #[serde(rename = "t")]
+    t: i64,
+    // 1547787608999125800
+    #[serde(rename = "y")]
+    y: Option<i64>,
+    // 1547787608999125800
+    #[serde(rename = "f")]
+    f: Option<i64>,
+    // 1547787608999125800
+    #[serde(rename = "q")]
+    q: i64,
+    // 23547
+    #[serde(rename = "i")]
+    i: String,
+    // 00MGON
+    #[serde(rename = "x")]
+    x: i64,
+    // 11
+    #[serde(rename = "s")]
+    s: i64,
+    // 100
+    #[serde(rename = "c")]
+    c: Option<Vec<i64>>,
+    #[serde(rename = "p")]
+    p: Option<f32>,
+    // 223.001
+    #[serde(rename = "z")]
+    z: i64,              // 1
+}
+
 fn main() {
-    let trade1 =
-        Trade {
-            time: 10,
-            size: 1,
-            price: 2,
-        };
+    let mut file =
+        OpenOptions::new()
+            .read(true)
+            .write(false)
+            .open("./test_data/test_data")
+            .expect("Could not open ./test_data/test_data for reading.");
 
-    let trade2 =
-        Trade {
-            time: 11,
-            size: 2,
-            price: 3,
-        };
+    let mut test_data = Vec::<u8>::new();
 
-    let trade3 =
-        Trade {
-            time: 12,
-            size: 3,
-            price: 4,
-        };
+    file.read_to_end(&mut test_data);
 
-    let quotick =
+    let ticks =
+        bincode::deserialize::<Vec<TestDataTrade>>(
+            &test_data,
+        )
+            .expect("Could not parse test data.");
+
+    let mut quotick =
         Quotick::<Trade>::new(
             "SYMBL",
-            "./db",
-        );
+            "./test_data/qt-db",
+        )
+            .expect("Could not open test database.");
 
-    if let Ok(mut qt) = quotick {
-        qt.insert(&trade1.into());
-        qt.insert(&trade2.into());
-        qt.insert(&trade3.into());
+    for tick in ticks {
+        if let Some(_) = tick.p {
+            let p = tick.p.unwrap();
+
+            println!("{} {} {} = ${}", tick.t, tick.s, p, tick.s as f64 * p as f64);
+        }
+
+        quotick.insert(
+            &quotick::Frame::new(
+                tick.t as u64,
+                Some(
+                    Trade {
+                        size: tick.s as u32,
+                        price: match tick.p {
+                            Some(p) => p as u32,
+                            None => { continue; }
+                        },
+                    },
+                ),
+            )
+        );
     }
 }

@@ -1,5 +1,4 @@
 pub mod backing;
-pub mod config;
 pub mod epoch;
 pub mod epoch_bridge;
 pub mod frame;

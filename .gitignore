@@ -16,3 +16,4 @@ Cargo.lock
 .DS_Store
 .idea/
 db/
+test_data/

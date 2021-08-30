@@ -7,14 +7,12 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-
-
-pub struct RandomAccessFile<T: Serialize + DeserializeOwned + Default> {
+pub struct RandomAccessFile<T: Serialize + DeserializeOwned> {
     file: File,
     _phantom: PhantomData<T>,
 }
 
-impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
+impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
     pub fn new(
         path: impl AsRef<Path>,
     ) -> Result<RandomAccessFile<T>, io::Error> {
@@ -39,6 +37,7 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
     pub fn read(
         &mut self,
         offset: u64,
+        size: u64,
     ) -> Result<T, Box<dyn std::error::Error>> {
         self.file
             .seek(
@@ -47,17 +46,15 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
                 ),
             )?;
 
-        let data_size =
-            bincode::serialized_size(
-                &T::default(),
-            )? as usize;
-
         let mut buf =
             Vec::with_capacity(
-                data_size,
+                size as usize,
             );
 
-        buf.resize(data_size, 0);
+        buf.resize(
+            size as usize,
+            0,
+        );
 
         buf.fill(0);
 
@@ -75,7 +72,7 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
         &mut self,
         position: SeekFrom,
         item: &T,
-    ) -> Result<u64, Box<dyn std::error::Error>> {
+    ) -> Result<(u64, u64), Box<dyn std::error::Error>> {
         let end_pos =
             self.file
                 .seek(
@@ -90,13 +87,13 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
         self.file
             .write(&buf)?;
 
-        Ok(end_pos)
+        Ok((end_pos, buf.len() as u64))
     }
 
     pub fn append(
         &mut self,
         item: &T,
-    ) -> Result<u64, Box<dyn std::error::Error>> {
+    ) -> Result<(u64, u64), Box<dyn std::error::Error>> {
         self.write(
             SeekFrom::End(
                 0,
@@ -105,9 +102,27 @@ impl<T: Serialize + DeserializeOwned + Default> RandomAccessFile<T> {
         )
     }
 
+    pub fn file_size(
+        &mut self,
+    ) -> Result<u64, Box<dyn std::error::Error>> {
+        let metadata = self.file.metadata()?;
+
+        Ok(metadata.len())
+    }
+
+    pub fn set_len(
+        &mut self,
+        new_len: u64,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.file
+            .set_len(new_len)?;
+
+        Ok(())
+    }
+
     pub fn truncate(
-        &self,
-    ) {
-        self.file.set_len(0);
+        &mut self,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.set_len(0)
     }
 }

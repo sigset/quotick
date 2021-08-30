@@ -1,11 +1,7 @@
-
-
-use radix_trie::Trie;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use super::backing::backing_file::BackingFile;
-
 use super::epoch::Epoch;
 use super::frame::Frame;
 use super::frameset::FrameSetError;
@@ -21,11 +17,9 @@ pub enum EpochBridgeError {
     Inconsistency,
 }
 
-pub type EpochIndex = Trie<u64, u64>;
-
 pub struct EpochBridge<T: Tick + Serialize + DeserializeOwned> {
-    epoch_index_backing: BackingFile<Trie<u64, u64>>,
-    epoch_index: EpochIndex,
+    epoch_index_backing: BackingFile<Vec<u64>>,
+    epoch_index: Vec<u64>,
 
     path_builder: QuotickPathBuilder,
 
@@ -37,14 +31,14 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
         path_builder: &QuotickPathBuilder,
     ) -> Result<EpochBridge<T>, EpochBridgeError> {
         let mut epoch_index_backing =
-            BackingFile::<Trie<u64, u64>>::new(
+            BackingFile::<Vec<u64>>::new(
                 path_builder.epoch_index_backing_file(),
             )
                 .map_err(|_| EpochBridgeError::BackingFileFailure)?;
 
         let epoch_index =
             epoch_index_backing.try_read()
-                .unwrap_or_else(|_| Trie::new());
+                .unwrap_or_else(|_| Vec::new());
 
         Ok(
             EpochBridge {
@@ -108,7 +102,27 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
                 ),
             );
 
+        self.insert_epoch(
+            epoch,
+        );
+
         Ok(())
+    }
+
+    pub fn insert_epoch(
+        &mut self,
+        epoch: u64,
+    ) {
+        match self.epoch_index.binary_search(&epoch) {
+            Ok(_) => {} // already exists
+            Err(pos) => {
+                self.epoch_index
+                    .insert(
+                        pos,
+                        epoch,
+                    );
+            }
+        }
     }
 
     pub fn persist(&mut self) {
