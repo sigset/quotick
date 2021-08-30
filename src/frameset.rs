@@ -66,8 +66,6 @@ impl<T: Tick + Serialize + DeserializeOwned> FrameSet<T> {
                 path_builder.frame_backing_file(epoch),
             )
                 .or_else(|err| {
-                    dbg!(err);
-
                     Err(
                         FrameSetError::BackingFileFailure(
                             "Failed to open frame backing file.",

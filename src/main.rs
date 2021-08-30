@@ -53,6 +53,7 @@ pub struct TestDataTrade {
     z: i64,              // 1
 }
 
+
 fn main() {
     let mut file =
         OpenOptions::new()
