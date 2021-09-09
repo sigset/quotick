@@ -1,3 +1,10 @@
+use std::borrow::Borrow;
+use std::cell::{RefCell, RefMut};
+use std::marker::PhantomData;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex, PoisonError};
+
+use radix_trie::TrieCommon;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -17,33 +24,46 @@ pub enum EpochBridgeError {
     Inconsistency,
 }
 
-pub struct EpochBridge<T: Tick + Serialize + DeserializeOwned> {
-    epoch_index_backing: BackingFile<Vec<u64>>,
-    epoch_index: Vec<u64>,
-
-    path_builder: QuotickPathBuilder,
-
-    curr_epoch: (u64, Option<Epoch<T>>),
+impl From<FrameSetError> for EpochBridgeError {
+    fn from(err: FrameSetError) -> Self {
+        EpochBridgeError::FrameSet(err)
+    }
 }
 
-impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
+pub struct EpochBridge<'a, T: Tick + Serialize + DeserializeOwned> {
+    epoch_index_backing: BackingFile<Vec<u64>>,
+
+    pub(crate) epoch_index: Vec<u64>,
+    pub(crate) epoch_bridge_iter: Box<dyn Iterator<Item = &'a u64> + 'a>,
+
+    pub(crate) curr_epoch: (u64, Option<Epoch<T>>),
+
+    path_builder: QuotickPathBuilder,
+}
+
+impl<'a, T: Tick + Serialize + DeserializeOwned> EpochBridge<'a, T> {
     pub fn new(
-        path_builder: &QuotickPathBuilder,
-    ) -> Result<EpochBridge<T>, EpochBridgeError> {
+        path_builder: QuotickPathBuilder,
+    ) -> Result<EpochBridge<'a, T>, EpochBridgeError> {
         let mut epoch_index_backing =
             BackingFile::<Vec<u64>>::new(
                 path_builder.epoch_index_backing_file(),
             )
                 .map_err(|_| EpochBridgeError::BackingFileFailure)?;
 
-        let epoch_index =
+        let mut epoch_index =
             epoch_index_backing.try_read()
                 .unwrap_or_else(|_| Vec::new());
 
         Ok(
             EpochBridge {
                 epoch_index_backing,
+
                 epoch_index,
+                epoch_bridge_iter: Box::new(
+                    epoch_index
+                        .iter(),
+                ),
 
                 path_builder: path_builder.clone(),
 
@@ -66,8 +86,12 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
             )?;
         }
 
+        let mut curr_epoch =
+            &mut self.curr_epoch;
+
         let ref mut frame_set =
-            self.curr_epoch.1.as_mut()
+            curr_epoch.1
+                .as_mut()
                 .ok_or(EpochBridgeError::BadFrameTick)?;
 
         frame_set.insert(frame);
@@ -80,8 +104,10 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
         &self,
         epoch: u64,
     ) -> bool {
-        let epoch_mismatch = epoch != self.curr_epoch.0;
-        let need_epoch = self.curr_epoch.1.is_none();
+        let curr_epoch = &self.curr_epoch;
+
+        let epoch_mismatch = epoch != curr_epoch.0;
+        let need_epoch = curr_epoch.1.is_none();
 
         epoch_mismatch || need_epoch
     }
@@ -97,14 +123,14 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
                 Some(
                     Epoch::new(
                         epoch,
-                        &self.path_builder,
-                    )?
+                        self.path_builder.clone(),
+                    )?,
                 ),
             );
 
         self.insert_epoch(
             epoch,
-        );
+        )?;
 
         Ok(())
     }
@@ -112,32 +138,45 @@ impl<T: Tick + Serialize + DeserializeOwned> EpochBridge<T> {
     pub fn insert_epoch(
         &mut self,
         epoch: u64,
-    ) {
-        match self.epoch_index.binary_search(&epoch) {
+    ) -> Result<(), EpochBridgeError> {
+        let epoch_index =
+            &mut self.epoch_index;
+
+        let bin_search =
+            epoch_index.binary_search(&epoch);
+
+        match bin_search {
             Ok(_) => {} // already exists
             Err(pos) => {
-                self.epoch_index
+                epoch_index
                     .insert(
                         pos,
                         epoch,
                     );
             }
         }
+
+        Ok(())
     }
 
-    pub fn persist(&mut self) {
+    pub fn persist(&mut self) -> Result<(), EpochBridgeError> {
+        let mut epoch_index = &mut self.epoch_index;
+        let mut curr_epoch = &mut self.curr_epoch;
+
         self.epoch_index_backing
             .write_all(
-                &self.epoch_index,
+                &epoch_index,
             );
 
-        if let Some(ref mut epoch) = self.curr_epoch.1 {
+        if let Some(ref mut epoch) = curr_epoch.1 {
             epoch.persist();
         }
+
+        Ok(())
     }
 }
 
-impl<T: Tick + Serialize + DeserializeOwned> Drop for EpochBridge<T> {
+impl<'a, T: Tick + Serialize + DeserializeOwned> Drop for EpochBridge<'a, T> {
     fn drop(&mut self) {
         self.persist();
     }

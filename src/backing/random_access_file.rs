@@ -9,6 +9,7 @@ use miniz_oxide::inflate::TINFLStatus;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+#[derive(Debug)]
 pub enum RandomAccessFileError {
     External(Box<dyn std::error::Error>),
     IoError(io::Error),

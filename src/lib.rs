@@ -1,3 +1,5 @@
+#![feature(nll)]
+
 pub mod backing;
 pub mod epoch;
 pub mod epoch_bridge;
