@@ -1,7 +1,6 @@
 #![feature(nll)]
 
 pub use backing::backing_file::BackingFile;
-pub use backing::random_access_file::RandomAccessFile;
 pub use epoch::Epoch;
 pub use frame::Frame;
 pub use quotick::Quotick;

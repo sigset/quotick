@@ -5,14 +5,14 @@ use super::Tick;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Frame<T: Tick> {
     time: u64,
-    tick: Option<T>,
+    tick: T,
 }
 
 impl<T: Tick> Frame<T> {
     #[inline(always)]
     pub fn new(
         time: u64,
-        tick: Option<T>,
+        tick: T,
     ) -> Frame<T> {
         Frame {
             time,
@@ -21,8 +21,8 @@ impl<T: Tick> Frame<T> {
     }
 
     #[inline(always)]
-    pub fn tick(&self) -> Option<&T> {
-        self.tick.as_ref()
+    pub fn tick(&self) -> &T {
+        &self.tick
     }
 
     #[inline(always)]
@@ -31,11 +31,7 @@ impl<T: Tick> Frame<T> {
     }
 
     #[inline(always)]
-    pub fn epoch(&self) -> Option<u64> {
-        self.tick
-            .as_ref()
-            .map(|tick|
-                     tick.epoch(self.time),
-            )
+    pub fn epoch(&self) -> u64 {
+        self.tick.epoch(self.time)
     }
 }

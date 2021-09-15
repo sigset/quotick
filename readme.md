@@ -27,16 +27,11 @@ use quotick::quotick::Quotick;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Trade {
-    time: u64,
     size: u32,
     price: u32,
 }
 
 impl quotick::tick::Tick for Trade {
-    fn time(&self) -> u64 {
-        self.time
-    }
-
     fn epoch(&self) -> u64 {
         // one day
         self.time / 86_400_000_000_000
@@ -45,25 +40,31 @@ impl quotick::tick::Tick for Trade {
 
 fn main() {
     let trade1 =
-        Trade {
-            time: 10,
-            size: 1,
-            price: 2,
-        };
+        (
+            10, // time
+            Trade {
+                size: 1,
+                price: 2,
+            },
+        );
 
     let trade2 =
-        Trade {
-            time: 11,
-            size: 2,
-            price: 3,
-        };
+        (
+            11, // time
+            Trade {
+                size: 2,
+                price: 3,
+            },
+        );
 
     let trade3 =
-        Trade {
-            time: 12,
-            size: 3,
-            price: 4,
-        };
+        (
+            12,
+            Trade {
+                size: 3,
+                price: 4,
+            },
+        );
 
     let quotick =
         Quotick::<Trade>::new(
@@ -72,12 +73,31 @@ fn main() {
         );
 
     if let Ok(mut qt) = quotick {
-        qt.insert(&trade1.into());
-        qt.insert(&trade2.into());
-        qt.insert(&trade3.into());
+        qt.insert(&Frame::new(trade1.0, trade1.1));
+        qt.insert(&Frame::new(trade2.0, trade2.1));
+        qt.insert(&Frame::new(trade3.0, trade3.1));
 
         qt.persist();
     }
+    
+    // iterate over all epochs
+    quotick
+        .epochs()
+        .for_each(
+            |mut epoch| {
+                // iterate over all frames
+                // in a given epoch
+
+                epoch
+                    .frames()
+                    .for_each(
+                        |frame| {
+                            frame.time(); // u64 time
+                            frame.tick(); // your tick
+                        },
+                    );
+            }
+        );
 }
 ```
 

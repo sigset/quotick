@@ -5,7 +5,6 @@ use serde_derive::{Deserialize, Serialize};
 
 use quotick::quotick::Quotick;
 
-
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Trade {
     size: u32,
@@ -72,41 +71,32 @@ fn run(ticks: &[TestDataTrade]) {
         quotick.insert(
             &quotick::Frame::new(
                 tick.t as u64,
-                Some(
-                    Trade {
-                        size: tick.s as u32,
-                        price: match tick.p {
-                            Some(p) => p as u32,
-                            None => { continue; }
-                        },
+                Trade {
+                    size: tick.s as u32,
+                    price: match tick.p {
+                        Some(p) => p as u32,
+                        None => { continue; }
                     },
-                ),
+                },
             )
         );
     }
 
     quotick.persist();
 
-    for _i in 0..100 {
-        quotick
-            .epoch_iter()
-            .for_each(
-                |mut epoch| {
-                    let mut f = 0;
-
-                    epoch
-                        .frame_index_iter()
-                        .for_each(
-                            |(time, offset)| {
-                                f += time;
-                                f += offset;
-                            },
-                        );
-
-                    dbg!(f);
-                }
-            );
-    }
+    quotick
+        .epochs()
+        .for_each(
+            |mut epoch| {
+                epoch
+                    .frames()
+                    .for_each(
+                        |frame| {
+                            frame.time();
+                        },
+                    );
+            }
+        );
 }
 
 fn main() {

@@ -2,16 +2,16 @@ use std::marker::PhantomData;
 use std::path::Path;
 use std::slice::Iter;
 
-use radix_trie::TrieCommon;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+
+use crate::Frame;
 
 use super::backing::backing_file::BackingFile;
 use super::epoch::Epoch;
 use super::epoch::EpochError;
 use super::path_builder::QuotickPathBuilder;
 use super::Tick;
-use crate::Frame;
 
 #[derive(Debug)]
 pub enum QuotickError {
@@ -33,7 +33,7 @@ pub fn init_paths(
 ) {
     std::fs::create_dir_all(
         path_builder
-            .frameset_path(),
+            .epoch_path(),
     );
 }
 
@@ -92,9 +92,7 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
         &mut self,
         frame: &Frame<T>,
     ) -> Result<(), QuotickError> {
-        let frame_epoch =
-            frame.epoch()
-                .ok_or(QuotickError::BadFrameEpoch)?;
+        let frame_epoch = frame.epoch();
 
         if self.needs_epoch_update(frame_epoch) {
             self.load_epoch(
@@ -194,8 +192,8 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
     }
 
     #[inline(always)]
-    pub fn epoch_iter(&self) -> EpochIndexIter<T> {
-        EpochIndexIter::<T>::new(
+    pub fn epochs(&self) -> EpochIter<T> {
+        EpochIter::<T>::new(
             self.epoch_index.iter(),
             self.path_builder.clone(),
         )
@@ -209,19 +207,19 @@ impl<T: Tick + Serialize + DeserializeOwned> Drop for Quotick<T> {
     }
 }
 
-pub struct EpochIndexIter<'a, T: Tick + Serialize + DeserializeOwned> {
+pub struct EpochIter<'a, T: Tick + Serialize + DeserializeOwned> {
     epoch_iter: Iter<'a, u64>,
     curr_epoch: Option<Epoch<T>>,
     path_builder: QuotickPathBuilder,
 }
 
-impl<'a, T: Tick + Serialize + DeserializeOwned> EpochIndexIter<'a, T> {
+impl<'a, T: Tick + Serialize + DeserializeOwned> EpochIter<'a, T> {
     #[inline(always)]
     pub fn new(
         epoch_iter: Iter<'a, u64>,
         path_builder: QuotickPathBuilder,
     ) -> Self {
-        EpochIndexIter {
+        EpochIter {
             epoch_iter,
             curr_epoch: None,
             path_builder,
@@ -229,7 +227,7 @@ impl<'a, T: Tick + Serialize + DeserializeOwned> EpochIndexIter<'a, T> {
     }
 }
 
-impl<'a, T: 'a + Tick + Serialize + DeserializeOwned> Iterator for EpochIndexIter<'a, T> {
+impl<'a, T: 'a + Tick + Serialize + DeserializeOwned> Iterator for EpochIter<'a, T> {
     type Item = Epoch<T>;
 
     #[inline(always)]

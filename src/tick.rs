@@ -18,14 +18,12 @@ pub trait Tick: Clone + std::fmt::Debug {
 }
 
 impl Tick for Quote {
-    #[inline(always)]
     fn epoch(&self, time: u64) -> u64 {
         time / 86_400_000_000_000
     }
 }
 
 impl Tick for Trade {
-    #[inline(always)]
     fn epoch(&self, time: u64) -> u64 {
         time / 86_400_000_000_000
     }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 pub struct QuotickPathBuilder {
     asset_path: PathBuf,
     base_path: PathBuf,
-    frameset_path: PathBuf,
+    epoch_path: PathBuf,
 }
 
 impl QuotickPathBuilder {
@@ -14,12 +14,12 @@ impl QuotickPathBuilder {
     ) -> QuotickPathBuilder {
         let base_path = path.as_ref().to_path_buf();
         let asset_path = base_path.join(asset);
-        let frameset_path = asset_path.join("frameset");
+        let epoch_path = asset_path.join("epoch");
 
         QuotickPathBuilder {
             base_path: base_path.to_path_buf(),
             asset_path: asset_path.to_path_buf(),
-            frameset_path: frameset_path.to_path_buf(),
+            epoch_path: epoch_path.to_path_buf(),
         }
     }
 
@@ -31,32 +31,17 @@ impl QuotickPathBuilder {
     pub fn asset_path(&self) -> PathBuf { self.asset_path.to_path_buf() }
 
     #[inline(always)]
-    pub fn frameset_path(&self) -> PathBuf { self.frameset_path.to_path_buf() }
-
-    #[inline(always)]
-    pub fn frame_backing_file(
-        &self,
-        epoch: u64,
-    ) -> PathBuf {
-        self.frameset_path
-            .join(
-                &format!(
-                    "{}.qtf",
-                    epoch,
-                ),
-            )
-            .to_path_buf()
-    }
+    pub fn epoch_path(&self) -> PathBuf { self.epoch_path.to_path_buf() }
 
     #[inline(always)]
     pub fn index_backing_file(
         &self,
         epoch: u64,
     ) -> PathBuf {
-        self.frameset_path
+        self.epoch_path
             .join(
                 &format!(
-                    "{}.qti",
+                    "{}.qtf",
                     epoch,
                 ),
             )
@@ -69,7 +54,7 @@ impl QuotickPathBuilder {
     ) -> PathBuf {
         self.asset_path
             .join(
-                "epochs.qti"
+                "epochs.qtf"
             )
             .to_path_buf()
     }
