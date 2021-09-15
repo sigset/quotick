@@ -24,6 +24,7 @@ pub struct BackingFile<T> {
 impl<T> BackingFile<T>
     where T: Serialize + DeserializeOwned + Clone
 {
+    #[inline(always)]
     pub fn new<P: AsRef<Path>>(
         path: P,
     ) -> Result<BackingFile<T>, BackingFileError> {
@@ -33,7 +34,7 @@ impl<T> BackingFile<T>
                 .write(true)
                 .create(true)
                 .open(path.as_ref())
-                    .map_err(|err| BackingFileError::IoError(err))?;
+                .map_err(|err| BackingFileError::IoError(err))?;
 
         Ok(
             BackingFile {
@@ -43,12 +44,14 @@ impl<T> BackingFile<T>
         )
     }
 
+    #[inline(always)]
     pub fn read(
         &mut self,
     ) -> Option<T> {
         self.try_read().ok()
     }
 
+    #[inline(always)]
     pub fn try_read(
         &mut self,
     ) -> Result<T, BackingFileError> {
@@ -70,16 +73,17 @@ impl<T> BackingFile<T>
             decompress_to_vec(
                 &buf,
             )
-            .map_err(|err| BackingFileError::InflateError(err))?;
+                .map_err(|err| BackingFileError::InflateError(err))?;
 
         Ok(
             bincode::deserialize::<T>(
                 &decompressed_buf,
             )
-            .map_err(|err| BackingFileError::External(err))?
+                .map_err(|err| BackingFileError::External(err))?
         )
     }
 
+    #[inline(always)]
     pub fn write_all(
         &mut self,
         item: &T,
@@ -94,7 +98,7 @@ impl<T> BackingFile<T>
             bincode::serialize(
                 item,
             )
-            .map_err(|err| BackingFileError::External(err))?;
+                .map_err(|err| BackingFileError::External(err))?;
 
         let compressed_buf =
             compress_to_vec(

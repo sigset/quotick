@@ -16,3 +16,10 @@ radix_trie = { version = "0.2.1", features = ["serde"] }
 serde = "1.0.129"
 serde_derive = "1.0.129"
 uuid = "0.8.2"
+
+[profile.release]
+panic = "abort"
+lto = true
+
+[profile.dev]
+panic = "abort"

@@ -1,30 +1,30 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::cell::{RefCell, RefMut, Ref};
 use std::marker::PhantomData;
 use std::path::Path;
-use std::rc::Rc;
 use std::slice::Iter;
-use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use radix_trie::TrieCommon;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use super::Epoch;
-use super::epoch_bridge::{EpochBridge, EpochBridgeError};
-use super::frame::Frame;
+use super::backing::backing_file::BackingFile;
+use super::epoch::Epoch;
+use super::epoch::EpochError;
 use super::path_builder::QuotickPathBuilder;
 use super::Tick;
+use crate::Frame;
 
 #[derive(Debug)]
 pub enum QuotickError {
-    EpochBridge(EpochBridgeError),
+    Epoch(EpochError),
+    BackingFileFailure,
+    BadFrameEpoch,
+    BadFrameTick,
     Inconsistency,
 }
 
-impl From<EpochBridgeError> for QuotickError {
-    fn from(err: EpochBridgeError) -> Self {
-        QuotickError::EpochBridge(err)
+impl From<EpochError> for QuotickError {
+    fn from(err: EpochError) -> Self {
+        QuotickError::Epoch(err)
     }
 }
 
@@ -37,19 +37,22 @@ pub fn init_paths(
     );
 }
 
-pub struct Quotick<'a, T: Tick + Serialize + DeserializeOwned> {
-    asset: String,
+pub struct Quotick<T: Tick + Serialize + DeserializeOwned> {
+    epoch_index_backing: BackingFile<Vec<u64>>,
+    pub(crate) epoch_index: Vec<u64>,
 
-    epoch_bridge: EpochBridge<'a, T>,
+    curr_epoch: (u64, Option<Epoch<T>>),
 
     path_builder: QuotickPathBuilder,
+
+    _phantom: PhantomData<T>,
 }
 
-impl<'a, T: Tick + Serialize + DeserializeOwned> Quotick<'a, T> {
+impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
     pub fn new(
-        asset: &'a str,
+        asset: &str,
         base_path: impl AsRef<Path>,
-    ) -> Result<Quotick<'a, T>, QuotickError> {
+    ) -> Result<Quotick<T>, QuotickError> {
         let path_builder =
             QuotickPathBuilder::new(
                 &asset,
@@ -60,104 +63,183 @@ impl<'a, T: Tick + Serialize + DeserializeOwned> Quotick<'a, T> {
             &path_builder,
         );
 
-        let mut epoch_bridge =
-            EpochBridge::<T>::new(path_builder.clone())
-                .or_else(|err|
-                             Err(QuotickError::EpochBridge(err)),
-                )?;
+        let mut epoch_index_backing =
+            BackingFile::<Vec<u64>>::new(
+                path_builder.epoch_index_backing_file(),
+            )
+                .map_err(|_| QuotickError::BackingFileFailure)?;
+
+        let epoch_index =
+            epoch_index_backing.try_read()
+                .unwrap_or_else(|_| Vec::new());
 
         Ok(
             Quotick {
-                asset: asset.to_string(),
+                epoch_index_backing,
+                epoch_index,
 
-                epoch_bridge,
+                curr_epoch: (0, None),
 
-                path_builder: path_builder.clone(),
+                path_builder,
+
+                _phantom: PhantomData,
             },
         )
     }
 
+    #[inline(always)]
     pub fn insert(
         &mut self,
         frame: &Frame<T>,
     ) -> Result<(), QuotickError> {
-        self.epoch_bridge
-            .insert(frame)
-            .map_err(|err|
-                         QuotickError::EpochBridge(err),
+        let frame_epoch =
+            frame.epoch()
+                .ok_or(QuotickError::BadFrameEpoch)?;
+
+        if self.needs_epoch_update(frame_epoch) {
+            self.load_epoch(
+                frame_epoch,
             )?;
+        }
+
+        let curr_epoch =
+            &mut self.curr_epoch;
+
+        let ref mut frame_set =
+            curr_epoch.1
+                .as_mut()
+                .ok_or(QuotickError::BadFrameTick)?;
+
+        frame_set.insert(frame);
 
         Ok(())
     }
 
-    pub fn persist(
+    #[inline(always)]
+    fn needs_epoch_update(
+        &self,
+        epoch: u64,
+    ) -> bool {
+        let curr_epoch = &self.curr_epoch;
+
+        let epoch_mismatch = epoch != curr_epoch.0;
+        let need_epoch = curr_epoch.1.is_none();
+
+        epoch_mismatch || need_epoch
+    }
+
+    #[inline(always)]
+    pub fn load_epoch(
         &mut self,
+        epoch: u64,
     ) -> Result<(), QuotickError> {
-        self.epoch_bridge.persist()?;
-
-        Ok(())
-    }
-
-    pub fn index_iter(&'a mut self) -> EpochIndexIter<'a, T> {
-        let mut iter =
-            EpochIndexIter::<'a, T>::new(
-                Box::new(
-                    self.epoch_bridge
-                        .epoch_index
-                        .iter(),
+        self.curr_epoch =
+            (
+                epoch,
+                Some(
+                    Epoch::new(
+                        epoch,
+                        self.path_builder.clone(),
+                    )?,
                 ),
             );
 
-        iter.set_epoch_bridge(
-            &mut self.epoch_bridge,
-        );
+        self.insert_epoch(
+            epoch,
+        )?;
 
-        iter
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn insert_epoch(
+        &mut self,
+        epoch: u64,
+    ) -> Result<(), QuotickError> {
+        let epoch_index =
+            &mut self.epoch_index;
+
+        let bin_search =
+            epoch_index.binary_search(&epoch);
+
+        match bin_search {
+            Ok(_) => {} // already exists
+            Err(pos) => {
+                epoch_index
+                    .insert(
+                        pos,
+                        epoch,
+                    );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn persist(&mut self) -> Result<(), QuotickError> {
+        let epoch_index = &mut self.epoch_index;
+        let curr_epoch = &mut self.curr_epoch;
+
+        self.epoch_index_backing
+            .write_all(
+                &epoch_index,
+            );
+
+        if let Some(ref mut epoch) = curr_epoch.1 {
+            epoch.persist();
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn epoch_iter(&self) -> EpochIndexIter<T> {
+        EpochIndexIter::<T>::new(
+            self.epoch_index.iter(),
+            self.path_builder.clone(),
+        )
     }
 }
 
-impl<'a, T: Tick + Serialize + DeserializeOwned> Drop for Quotick<'a, T> {
+impl<T: Tick + Serialize + DeserializeOwned> Drop for Quotick<T> {
+    #[inline(always)]
     fn drop(&mut self) {
         self.persist();
     }
 }
 
 pub struct EpochIndexIter<'a, T: Tick + Serialize + DeserializeOwned> {
-    epoch_bridge: Option<&'a mut EpochBridge<'a, T>>,
-    epoch_index_iter: Box<dyn Iterator<Item=&'a u64> + 'a>,
+    epoch_iter: Iter<'a, u64>,
+    curr_epoch: Option<Epoch<T>>,
+    path_builder: QuotickPathBuilder,
 }
 
 impl<'a, T: Tick + Serialize + DeserializeOwned> EpochIndexIter<'a, T> {
+    #[inline(always)]
     pub fn new(
-        epoch_index_iter: Box<dyn Iterator<Item=&'a u64> + 'a>,
+        epoch_iter: Iter<'a, u64>,
+        path_builder: QuotickPathBuilder,
     ) -> Self {
         EpochIndexIter {
-            epoch_bridge: None,
-            epoch_index_iter,
+            epoch_iter,
+            curr_epoch: None,
+            path_builder,
         }
-    }
-
-    pub fn set_epoch_bridge(
-        &mut self,
-        epoch_bridge: &'a mut EpochBridge<'a, T>,
-    ) {
-        self.epoch_bridge = Some(epoch_bridge);
     }
 }
 
-impl<'a, T: Tick + Serialize + DeserializeOwned> Iterator for EpochIndexIter<'a, T> {
-    type Item = Frame<T>;
+impl<'a, T: 'a + Tick + Serialize + DeserializeOwned> Iterator for EpochIndexIter<'a, T> {
+    type Item = Epoch<T>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        match self.epoch_index_iter.next() {
-            None => None,
-            Some(epoch) => {
-                self.epoch_bridge
-                    .as_mut()?
-                    .load_epoch(*epoch);
+        let epoch = *self.epoch_iter.next()?;
 
-                None
-            }
-        }
+        Epoch::new(
+            epoch,
+            self.path_builder.clone(),
+        )
+            .ok()
     }
 }

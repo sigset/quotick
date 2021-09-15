@@ -23,10 +23,17 @@ impl QuotickPathBuilder {
         }
     }
 
+
+    #[inline(always)]
     pub fn base_path(&self) -> PathBuf { self.base_path.to_path_buf() }
+
+    #[inline(always)]
     pub fn asset_path(&self) -> PathBuf { self.asset_path.to_path_buf() }
+
+    #[inline(always)]
     pub fn frameset_path(&self) -> PathBuf { self.frameset_path.to_path_buf() }
 
+    #[inline(always)]
     pub fn frame_backing_file(
         &self,
         epoch: u64,
@@ -41,6 +48,7 @@ impl QuotickPathBuilder {
             .to_path_buf()
     }
 
+    #[inline(always)]
     pub fn index_backing_file(
         &self,
         epoch: u64,
@@ -55,6 +63,7 @@ impl QuotickPathBuilder {
             .to_path_buf()
     }
 
+    #[inline(always)]
     pub fn epoch_index_backing_file(
         &self,
     ) -> PathBuf {

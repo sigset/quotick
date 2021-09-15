@@ -5,6 +5,7 @@ use serde_derive::{Deserialize, Serialize};
 
 use quotick::quotick::Quotick;
 
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Trade {
     size: u32,
@@ -53,6 +54,60 @@ pub struct TestDataTrade {
     z: i64,              // 1
 }
 
+fn run(ticks: &[TestDataTrade]) {
+    let mut quotick =
+        Quotick::<Trade>::new(
+            "SYMBL",
+            "./test_data/qt-db",
+        )
+            .expect("Could not open test database.");
+
+    for tick in ticks {
+        if let Some(_) = tick.p {
+            //let p = tick.p.unwrap();
+
+            //println!("{} {} {} = ${}", tick.t, tick.s, p, tick.s as f64 * p as f64);
+        }
+
+        quotick.insert(
+            &quotick::Frame::new(
+                tick.t as u64,
+                Some(
+                    Trade {
+                        size: tick.s as u32,
+                        price: match tick.p {
+                            Some(p) => p as u32,
+                            None => { continue; }
+                        },
+                    },
+                ),
+            )
+        );
+    }
+
+    quotick.persist();
+
+    for _i in 0..100 {
+        quotick
+            .epoch_iter()
+            .for_each(
+                |mut epoch| {
+                    let mut f = 0;
+
+                    epoch
+                        .frame_index_iter()
+                        .for_each(
+                            |(time, offset)| {
+                                f += time;
+                                f += offset;
+                            },
+                        );
+
+                    dbg!(f);
+                }
+            );
+    }
+}
 
 fn main() {
     let mut file =
@@ -72,33 +127,5 @@ fn main() {
         )
             .expect("Could not parse test data.");
 
-    let mut quotick =
-        Quotick::<Trade>::new(
-            "SYMBL",
-            "./test_data/qt-db",
-        )
-            .expect("Could not open test database.");
-
-    for tick in ticks {
-        if let Some(_) = tick.p {
-            let p = tick.p.unwrap();
-
-            println!("{} {} {} = ${}", tick.t, tick.s, p, tick.s as f64 * p as f64);
-        }
-
-        quotick.insert(
-            &quotick::Frame::new(
-                tick.t as u64,
-                Some(
-                    Trade {
-                        size: tick.s as u32,
-                        price: match tick.p {
-                            Some(p) => p as u32,
-                            None => { continue; }
-                        },
-                    },
-                ),
-            )
-        );
-    }
+    run(&ticks);
 }

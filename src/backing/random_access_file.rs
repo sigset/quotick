@@ -4,7 +4,6 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::marker::PhantomData;
 use std::path::Path;
 
-use miniz_oxide::deflate::compress_to_vec;
 use miniz_oxide::inflate::TINFLStatus;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -23,6 +22,7 @@ pub struct RandomAccessFile<T: Serialize + DeserializeOwned> {
 }
 
 impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
+    #[inline(always)]
     pub fn new(
         path: impl AsRef<Path>,
     ) -> Result<RandomAccessFile<T>, RandomAccessFileError> {
@@ -45,6 +45,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
 
     // singular ops
 
+    #[inline(always)]
     pub fn read(
         &mut self,
         offset: u64,
@@ -82,6 +83,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
         )
     }
 
+    #[inline(always)]
     pub fn write(
         &mut self,
         position: SeekFrom,
@@ -107,6 +109,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
         Ok((end_pos, buf.len() as u64))
     }
 
+    #[inline(always)]
     pub fn append(
         &mut self,
         item: &T,
@@ -119,6 +122,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
         )
     }
 
+    #[inline(always)]
     pub fn file_size(
         &mut self,
     ) -> Result<u64, RandomAccessFileError> {
@@ -130,6 +134,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
         Ok(metadata.len())
     }
 
+    #[inline(always)]
     pub fn set_len(
         &mut self,
         new_len: u64,
@@ -141,6 +146,7 @@ impl<T: Serialize + DeserializeOwned> RandomAccessFile<T> {
         Ok(())
     }
 
+    #[inline(always)]
     pub fn truncate(
         &mut self,
     ) -> Result<(), RandomAccessFileError> {
