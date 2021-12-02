@@ -1,6 +1,6 @@
 [package]
 name = "quotick"
-version = "0.2.1"
+version = "0.2.2-alpha.0"
 authors = ["19h <kenan@sig.dev>", "SIGDEV LLC <hello@sig.dev>"]
 edition = "2018"
 readme = "readme.md"
