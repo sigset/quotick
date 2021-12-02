@@ -13,3 +13,4 @@ pub mod path_builder;
 pub mod quotick;
 pub mod tick;
 
+mod radix_trie;

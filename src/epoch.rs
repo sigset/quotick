@@ -1,10 +1,10 @@
-use radix_trie::{Trie, TrieCommon};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use super::BackingFile;
 use super::frame::Frame;
 use super::path_builder::QuotickPathBuilder;
+use super::radix_trie::{Trie, TrieCommon};
 use super::Tick;
 
 #[derive(Debug)]
@@ -66,14 +66,15 @@ impl<T: Tick + Serialize + DeserializeOwned> Epoch<T> {
         )
     }
 
+    #[inline(always)]
     pub fn frames(&mut self) -> impl Iterator<Item=Frame<T>> + '_ {
         self.frame_index
             .iter()
             .map(|(time, item)|
-                Frame::new(
-                    *time,
-                    item.clone(),
-                ),
+                     Frame::new(
+                         *time,
+                         item.clone(),
+                     ),
             )
     }
 

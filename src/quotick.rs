@@ -5,7 +5,7 @@ use std::slice::Iter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::Frame;
+use super::Frame;
 
 use super::backing::backing_file::BackingFile;
 use super::epoch::Epoch;
@@ -23,6 +23,7 @@ pub enum QuotickError {
 }
 
 impl From<EpochError> for QuotickError {
+    #[inline(always)]
     fn from(err: EpochError) -> Self {
         QuotickError::Epoch(err)
     }
@@ -49,6 +50,7 @@ pub struct Quotick<T: Tick + Serialize + DeserializeOwned> {
 }
 
 impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
+    #[inline(always)]
     pub fn new(
         asset: &str,
         base_path: impl AsRef<Path>,
@@ -189,6 +191,26 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    pub fn oldest_frame(&self) -> Option<Frame<T>> {
+        let mut epoch = self.epochs().next()?;
+
+        let res = epoch.frames().next();
+
+        res
+    }
+
+    #[inline(always)]
+    pub fn newest_frame(&self) -> Option<Frame<T>> {
+        let mut epoch =
+            Epoch::new(
+                self.epoch_index.last().copied()?,
+                self.path_builder.clone(),
+            ).ok()?;
+
+        epoch.frames().last()
     }
 
     #[inline(always)]

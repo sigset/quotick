@@ -12,6 +12,7 @@ struct Trade {
 }
 
 impl quotick::tick::Tick for Trade {
+    #[inline(always)]
     fn epoch(&self, time: u64) -> u64 {
         // one day
         time / 86_400_000_000_000
@@ -53,6 +54,7 @@ pub struct TestDataTrade {
     z: i64,              // 1
 }
 
+#[inline(always)]
 fn run(ticks: &[TestDataTrade]) {
     let mut quotick =
         Quotick::<Trade>::new(
@@ -97,6 +99,9 @@ fn run(ticks: &[TestDataTrade]) {
                     );
             }
         );
+
+    dbg!(quotick.oldest_frame());
+    dbg!(quotick.newest_frame());
 }
 
 fn main() {

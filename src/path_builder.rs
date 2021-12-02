@@ -8,6 +8,7 @@ pub struct QuotickPathBuilder {
 }
 
 impl QuotickPathBuilder {
+    #[inline(always)]
     pub fn new(
         asset: &str,
         path: impl AsRef<Path>,
@@ -22,7 +23,6 @@ impl QuotickPathBuilder {
             epoch_path: epoch_path.to_path_buf(),
         }
     }
-
 
     #[inline(always)]
     pub fn base_path(&self) -> PathBuf { self.base_path.to_path_buf() }
