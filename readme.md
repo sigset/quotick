@@ -72,13 +72,11 @@ fn main() {
             "./db",
         );
 
-    if let Ok(mut qt) = quotick {
-        qt.insert(&Frame::new(trade1.0, trade1.1));
-        qt.insert(&Frame::new(trade2.0, trade2.1));
-        qt.insert(&Frame::new(trade3.0, trade3.1));
+    qt.insert(&Frame::new(trade1.0, trade1.1));
+    qt.insert(&Frame::new(trade2.0, trade2.1));
+    qt.insert(&Frame::new(trade3.0, trade3.1));
 
-        qt.persist();
-    }
+    qt.persist();
     
     // iterate over all epochs
     quotick
@@ -98,6 +96,14 @@ fn main() {
                     );
             }
         );
+
+    // obtain the frame with the lowest
+    // time value of the first epoch (10)
+    dbg!(quotick.oldest_frame());
+
+    // obtain the frame with the highest
+    // time value of the last epoch (12)
+    dbg!(quotick.newest_frame());
 }
 ```
 
