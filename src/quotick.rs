@@ -90,9 +90,10 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
     }
 
     #[inline(always)]
-    pub fn insert(
+    pub fn insert_opt(
         &mut self,
         frame: &Frame<T>,
+        force_overwrite: bool,
     ) -> Result<(), QuotickError> {
         let frame_epoch = frame.epoch();
 
@@ -111,10 +112,24 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
                 .ok_or(QuotickError::BadFrameTick)?;
 
         frame_set
-            .insert(frame)
+            .insert(
+                frame,
+                force_overwrite,
+            )
             .map_err(|err|
                 QuotickError::Epoch(err)
             )
+    }
+
+    #[inline(always)]
+    pub fn insert(
+        &mut self,
+        frame: &Frame<T>,
+    ) -> Result<(), QuotickError> {
+        self.insert_opt(
+            frame,
+            false,
+        )
     }
 
     #[inline(always)]

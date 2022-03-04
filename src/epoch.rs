@@ -87,10 +87,11 @@ impl<T: Tick + Serialize + DeserializeOwned> Epoch<T> {
     pub fn insert(
         &mut self,
         frame: &Frame<T>,
+        force_overwrite: bool,
     ) -> Result<(), EpochError> {
         let time = frame.time();
 
-        if self.frame_index.get(&time).is_some() {
+        if !force_overwrite && self.frame_index.get(&time).is_some() {
             return Err(EpochError::FrameConflict);
         }
 
