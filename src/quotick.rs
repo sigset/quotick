@@ -110,9 +110,11 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
                 .as_mut()
                 .ok_or(QuotickError::BadFrameTick)?;
 
-        frame_set.insert(frame);
-
-        Ok(())
+        frame_set
+            .insert(frame)
+            .map_err(|err|
+                QuotickError::Epoch(err)
+            )
     }
 
     #[inline(always)]
@@ -146,9 +148,7 @@ impl<T: Tick + Serialize + DeserializeOwned> Quotick<T> {
 
         self.insert_epoch(
             epoch,
-        )?;
-
-        Ok(())
+        )
     }
 
     #[inline(always)]
